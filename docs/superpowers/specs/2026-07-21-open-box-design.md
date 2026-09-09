@@ -245,10 +245,10 @@ Open-Box 面向全球用户,不以"国内/国外"为分流概念。分流分**�
 
 ```bash
 # 直连版
-curl -fsSL https://raw.githubusercontent.com/liandu2024/Open-Box/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/330079598/Open-Box/main/scripts/install.sh | sh
 
 # 镜像加速版(镜像站域名在发布前确定当期可用站点,写入脚本默认值,且可通过参数覆盖)
-curl -fsSL https://<镜像前缀>/https://raw.githubusercontent.com/liandu2024/Open-Box/main/scripts/install.sh | sh -s -- --mirror
+curl -fsSL https://<镜像前缀>/https://raw.githubusercontent.com/330079598/Open-Box/main/scripts/install.sh | sh -s -- --mirror
 ```
 
 安装流程:

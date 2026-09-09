@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  OPENBOX_REPO: liandu2024/Open-Box
+  OPENBOX_REPO: 330079598/Open-Box
 
 jobs:
   build:

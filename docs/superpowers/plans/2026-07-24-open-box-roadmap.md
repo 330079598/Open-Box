@@ -129,7 +129,7 @@
 
 ## 记录在案(来自 P6 终审)
 
-**首次发版前必须确认:** 仓库标识 `liandu2024/Open-Box` 目前是占位(本地无 git remote),它被硬编码在 `scripts/install.sh`、`scripts/update.sh`、`.github/workflows/release.yml`、`README.md` 四处。与真实 GitHub 仓库不一致会让文档里每条命令 404。
+**首次发版前必须确认:** 仓库标识 `330079598/Open-Box` 已用于安装、升级和发布配置。它被硬编码在 `scripts/install.sh`、`scripts/update.sh`、`.github/workflows/release.yml`、`README.md` 等位置。与真实 GitHub 仓库不一致会让文档里每条命令 404。
 
 **musl 相关的三处坑(已全部修复,记录以防回退):**
 1. nodejs.org 官方 Linux 二进制是 glibc 链接,OpenWrt 无法启动 → 必须用 unofficial-builds 的 `-musl` 变体
