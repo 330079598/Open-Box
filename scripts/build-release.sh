@@ -56,8 +56,14 @@
 
 set -eu
 
+# 在 macOS 上打包时,BSD tar 会把 com.apple.provenance 之类的扩展属性写成 PAX 头,
+# 路由器上的 GNU/busybox tar 解包时每个文件都报一句 "Ignoring unknown extended header
+# keyword"。无害,但满屏警告吓人,关掉。
+export COPYFILE_DISABLE=1
+
 NODE_VERSION="24.18.0"
-SINGBOX_VERSION="1.13.14"
+SINGBOX_VERSION="1.14.0-openbox-tcp1"
+SINGBOX_RELEASE_URL="https://github.com/liandu2024/Open-Box/releases/download/v0.1.158"
 
 # ---- 供应链固定:版本号旁边固定对应资产的 sha256,下载后(含缓存命中时)校验,
 # 不匹配就构建失败。避免"每次发版都重新下载却从不校验"的静默供应链口子——
@@ -66,12 +72,11 @@ SINGBOX_VERSION="1.13.14"
 NODE_SHA256_X64="b818a0c3857272329cad4d575abf49e5060215858c9c3015437366f8adc7b85d"
 NODE_SHA256_ARM64="b32d834975b3b38cf3226e220d3e1fcb5959047f0b2e184fffb709d9a69ed434"
 
-# sing-box 官方不单独发布 checksums 文件,这两个哈希是从
-# https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/ 下的
-# sing-box-${SINGBOX_VERSION}-linux-{amd64,arm64}-musl.tar.gz 现下现算的(键名用
-# sing-box 自己的架构命名 amd64/arm64,与下方 $SINGBOX_ARCH 对应)。
-SINGBOX_SHA256_AMD64="d5b46de6498427bccfeb87dbafcde4dbefdfe35680020d07d286ad915f0bfb34"
-SINGBOX_SHA256_ARM64="edec18488af35a93cf8b362063146fdd7b557ef9862710ee77a1f4adb5c70118"
+# 基于官方 v1.14.0 的 TCP DNS 兼容补丁,不是 SagerNet 官方版本。
+# scripts/singbox-tcp-dns-hotfix/ 记录补丁与完整 CGO/musl 构建方式。
+# 保留官方全部默认功能(含 Naive);固定自有发布附件的哈希,不能退回精简构建。
+SINGBOX_SHA256_AMD64="d8b9adbf1ad2a124c60d3a2bbfbc93cb4703288788489a3b1d1d0d1a994d8271"
+SINGBOX_SHA256_ARM64="1cd15570e18cc9e745480a5219a139784fea439ea283e722ba24f5bd73d13a61"
 
 # Alpine 的 musl 版 libstdc++ / libgcc(见文件头 Critical 1 说明)。latest-stable
 # 仓库里 x86_64 与 aarch64 目前恰好是同一个包版本,但两个架构的资产是分别构建的
@@ -297,7 +302,7 @@ log "DT_NEEDED 校验通过($ARCH): $(printf '%s' "$NODE_NEEDED" | tr '\n' ' ')"
 
 # ---- 6. 下载并解出 sing-box(注意 x64→amd64 映射;必须是 -musl 资产,见上)----
 SINGBOX_TARBALL="sing-box-${SINGBOX_VERSION}-linux-${SINGBOX_ARCH}-musl.tar.gz"
-SINGBOX_URL="https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/${SINGBOX_TARBALL}"
+SINGBOX_URL="${SINGBOX_RELEASE_URL}/${SINGBOX_TARBALL}"
 SINGBOX_CACHE="$CACHE_DIR/$SINGBOX_TARBALL"
 fetch_cached "$SINGBOX_URL" "$SINGBOX_CACHE" "sing-box $SINGBOX_VERSION ($SINGBOX_ARCH)" "$SINGBOX_SHA256"
 
@@ -312,6 +317,9 @@ if [ -z "$SINGBOX_BIN" ]; then
 fi
 cp "$SINGBOX_BIN" "$STAGE/bin/sing-box"
 chmod +x "$STAGE/bin/sing-box"
+SINGBOX_INNER_DIR=$(dirname "$SINGBOX_BIN")
+cp "$SINGBOX_INNER_DIR/LICENSE" "$STAGE/bin/sing-box.LICENSE"
+cp "$SINGBOX_INNER_DIR/BUILD-INFO.json" "$STAGE/bin/sing-box.BUILD-INFO.json"
 rm -rf "$SINGBOX_EXTRACT_DIR"
 
 # ---- 7. 构建期依赖守卫(P6 复审 Minor):确认 sing-box 二进制真正静态链接。
@@ -370,7 +378,16 @@ STABLE_NAME="open-box-linux-${ARCH}.tar.gz"
 VERSIONED_PATH="$OUTDIR/$VERSIONED_NAME"
 STABLE_PATH="$OUTDIR/$STABLE_NAME"
 log "打包 $VERSIONED_NAME..."
-(cd "$STAGE" && tar -czf "$VERSIONED_PATH" node panel bin openwrt meta.json uninstall.sh update.sh)
+# macOS 上的 bsdtar 会把扩展属性(com.apple.provenance 等)写成 PAX 头,路由器上的 tar
+# 每解一个文件就报一句 "Ignoring unknown extended header keyword",无害但满屏都是。
+# COPYFILE_DISABLE 只能挡 ._ 文件,挡不住这种头,要显式关掉 xattr / mac metadata。
+TAR_NO_XATTR=""
+if tar --version 2>/dev/null | grep -qi bsdtar; then
+  TAR_NO_XATTR="--no-xattrs --no-mac-metadata"
+elif tar --version 2>/dev/null | grep -qi "gnu tar"; then
+  TAR_NO_XATTR="--no-xattrs"
+fi
+(cd "$STAGE" && tar $TAR_NO_XATTR -czf "$VERSIONED_PATH" node panel bin openwrt meta.json uninstall.sh update.sh)
 cp "$VERSIONED_PATH" "$STABLE_PATH"
 
 # ---- 11. sha256(分别对两个文件名各算一份,sha256sum -c 依赖文件名匹配)----
