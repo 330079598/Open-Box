@@ -126,10 +126,13 @@ jobs:
             echo ""
             echo '```bash'
             echo "# 直连版"
-            echo "curl -fsSL https://raw.githubusercontent.com/${OPENBOX_REPO}/main/scripts/install.sh | sh"
+            # 安装命令引用打 tag 的提交(github.ref_name),而不是 main 分支:本仓库是 fork,
+            # main 只做上游镜像(不含本 fork 的 REPO 改名补丁),从 main 取 install.sh 会把
+            # 用户引回上游仓库装错包(v0.1.152 实际发生过)。tag 是只读的,链接永远有效。
+            echo "curl -fsSL https://raw.githubusercontent.com/${OPENBOX_REPO}/${{ github.ref_name }}/scripts/install.sh | sh"
             echo ""
             echo "# 镜像加速版(把 <镜像前缀> 换成你信任的加速站点域名)"
-            echo "curl -fsSL https://<镜像前缀>/https://raw.githubusercontent.com/${OPENBOX_REPO}/main/scripts/install.sh | sh -s -- --mirror <镜像前缀>"
+            echo "curl -fsSL https://<镜像前缀>/https://raw.githubusercontent.com/${OPENBOX_REPO}/${{ github.ref_name }}/scripts/install.sh | sh -s -- --mirror <镜像前缀>"
             echo '```'
             echo ""
             echo "完整安装 / 升级 / 卸载说明见仓库根目录 README。"
